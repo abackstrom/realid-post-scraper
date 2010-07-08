@@ -1,0 +1,12 @@
+.graph {
+	width: 500px;
+	height: 300px;
+}
+
+span.footnotes {
+	vertical-align: super;
+}
+
+p.footnotes {
+	font-size: small;
+}
