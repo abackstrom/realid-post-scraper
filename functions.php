@@ -117,7 +117,7 @@ function pages_by_count( $count = 5 ) {
 		$count = '';
 	}
 
-	$sth = $db->query("SELECT page, COUNT(*) `count` FROM realid_posts GROUP BY page ORDER BY COUNT(*) $count", PDO::FETCH_OBJ);
+	$sth = $db->query("SELECT page, COUNT(*) `count` FROM realid_posts WHERE `deleted` = 0 GROUP BY page ORDER BY COUNT(*) $count", PDO::FETCH_OBJ);
 
 	return $sth->fetchAll();
 }
@@ -165,6 +165,50 @@ function mean_posts_over_time( $sample_every = 10 ) {
 	$mc->set( 'realid:mpot', $walking_mean, false, 300 );
 
 	return $walking_mean;
+}
+
+function new_posts_vs_new_characters( $sample_every = 10 ) {
+	global $db, $mc;
+
+	$npnc = $mc->get( 'realid:npnc' );
+
+	if( $npnc ) {
+		return $npnc;
+	}
+
+	// try to reserve the spot in memcached for maximum 30 seconds
+	if( ! $mc->add( 'realid:npnc', array('generating', 'generating'), 30 ) ) {
+		return $mc->get( 'realid:npnc' );
+	}
+
+	ignore_user_abort( true );
+
+	$sth = $db->query("SELECT * FROM realid_posts WHERE `deleted` = 0 ORDER BY id", PDO::FETCH_OBJ);
+
+	$seen_characters = array();
+
+	$np = array();
+	$nc = array();
+
+	$i = 0;
+	foreach( $sth as $post ) {
+		$key = $post->character . '-' . $post->realm;
+
+		$seen_characters[$key] = 1;
+
+		$post->id = (int)$post->id;
+
+		if( $i % $sample_every == 0) {
+			$np[] = array($post->id, $post->id);
+			$nc[] = array($post->id, count($seen_characters));
+		}
+
+		$i += 1;
+	}
+
+	$mc->set( 'realid:npnc', array($np, $nc), false, 300 );
+
+	return array($np, $nc);
 }
 
 function rescan_progress() {

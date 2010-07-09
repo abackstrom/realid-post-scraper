@@ -31,7 +31,11 @@
 	<li>Deleted posts: <?php echo number_format(deleted_posts()); ?> (<?php echo deleted_posts_percent(); ?>%)<span class="footnotes">*&dagger;</span></li>
 </ul>
 
-<p class="footnotes">* The script is currently rescanning old pages for newly-deleted posts: <?php echo rescan_progress(); ?> pages remaining. True value is &gt;10%.<br>
+<script type="text/javascript">
+var highest_post_number = <?php echo highest_post_number(); ?>;
+</script>
+
+<p class="footnotes">* Value updated continuously as pages are rescanned for deleted posts. May not be 100% accurate.<br>
 &dagger; Includes moderated posts (trolling, CAPSLOCK, spam, etc.) and self-deleted posts.</p>
 
 <h2>Characters in Thread</h2>
@@ -58,6 +62,13 @@
 <?php $mpot = mean_posts_over_time( 500 ); ?>
 <script type="text/javascript">
 var mpot = [<?php echo json_encode($mpot); ?>];
+</script>
+
+<h3>New Posts vs. New Characters</h3>
+<div id="npnc-posts" class="graph"></div>
+<?php list($np, $nc) = new_posts_vs_new_characters( 500 ); ?>
+<script type="text/javascript">
+var npnc = [<?php echo json_encode($np); ?>, <?php echo json_encode($nc); ?>];
 </script>
 
 <h2>Source Code</h2>
