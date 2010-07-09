@@ -6,6 +6,8 @@ if( $_SERVER['REMOTE_ADDR'] != SCRAPER_BOSS ) {
 	die('Sorry, you are not allowed to start the scraper.');
 }
 
+date_default_timezone_set('UTC');
+
 $sth = $db->query( "SELECT MAX(`page`)+1 `max_page` FROM `realid_posts` WHERE $region_sql" );
 $page_no = array_pop($sth->fetch());
 if( $page_no == 0 ) {
@@ -53,8 +55,10 @@ function scrape_page( $page_no ) {
 	echo '<br>';
 
 	$sth = $db->prepare("
-		INSERT INTO `realid_posts` (`id`, `page`, `character`, `realm`, `scanned`, `rescanned`, `region`) VALUES (:post_id, :page_no, :character, :realm, NOW(), NOW(), :region)
-		ON DUPLICATE KEY UPDATE `page` = :page_no, `character` = :character, `realm` = :realm, `deleted` = 0, `rescanned` = NOW()
+		INSERT INTO `realid_posts`
+			(`id`, `page`, `character`, `realm`, `scanned`, `rescanned`, `region`, `level`, `post_date_gmt`) VALUES
+			(:post_id, :page_no, :character, :realm, NOW(), NOW(), :region, :level, :post_date)
+		ON DUPLICATE KEY UPDATE `page` = :page_no, `character` = :character, `realm` = :realm, `deleted` = 0, `rescanned` = NOW(), `level` = :level, `post_date_gmt` = :post_date
 	");
 
 	$expected_post_no = ($page_no - 1) * 20;
@@ -73,10 +77,15 @@ function scrape_page( $page_no ) {
 		$guild_url = pq($post)->find('.icon-guild a')->attr('href');
 		$realm = pq($post)->find('.icon-realm b')->text();
 		$post_id = (int)pq($post)->find('#postid11 b, #postid21 b')->text();
+		$level = (int)pq($post)->find('.iconPosition')->text();
+		$post_date = pq($post)->find('#postid11 small, #postid21 small')->text();
+
+		$post_date = strtotime($post_date);
+		$post_date = date('Y-m-d H:i:s', $post_date);
 
 		$found_posts[] = $post_id;
 
-		$args = compact('character', 'post_id', 'realm', 'page_no', 'region');
+		$args = compact('character', 'post_id', 'realm', 'page_no', 'region', 'level', 'post_date');
 
 		printf('<li>#%d &mdash; %s of %s (', $post_id, $character, $realm);
 
