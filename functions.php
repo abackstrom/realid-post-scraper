@@ -2,47 +2,88 @@
 
 require_once 'init.php';
 
-function unique_posters() {
-	global $region_sql;
+class cache {
+	function get( $key ) {
+		global $mc;
 
-	static $unique_posters = null;
+		if( isset($this->$key) ) {
+			return $this->$key;
+		}
 
-	if( $unique_posters === null ) {
-		global $db;
-		$sth = $db->query("SELECT `character`, `realm` FROM `realid_posts` WHERE `deleted` = 0 AND $region_sql GROUP BY `character`, `realm`");
-		$unique_posters = $sth->rowCount();
+		return $this->$key = $mc->get($key);
 	}
 
-	return $unique_posters;
+	function set( $key, $value, $ttl = 60 ) {
+		global $mc;
+
+		if( $mc->set( $key, $value, false, $ttl ) ) {
+			$this->$key = $value;
+			return true;
+		}
+
+		return false;
+	}
+
+	function add( $key, $value, $ttl = 60 ) {
+		global $mc;
+
+		if( $mc->add( $key, $value, false, $ttl ) ) {
+			$this->$key = $value;
+			return true;
+		}
+
+		return false;
+	}
+
+	function key() {
+		global $region;
+
+		$append = implode(":", func_get_args());
+
+		return "realid:$region:$append";
+	}
+}
+
+function unique_posters() {
+	global $cache, $region, $region_sql;
+
+	$key = "realid:$region:unique_posters";
+
+	if( ! $cache->get($key) ) {
+		global $db;
+		$sth = $db->query("SELECT `character`, `realm` FROM `realid_posts` WHERE `deleted` = 0 AND $region_sql GROUP BY `character`, `realm`");
+		$cache->add( $key, $sth->rowCount() );
+	}
+
+	return $cache->get($key);
 }
 
 function repeat_posters() {
-	global $region_sql;
+	global $cache, $region, $region_sql;
 
-	static $repeat_posters = null;
+	$key = $cache->key('repeat_posters');
 
-	if( $repeat_posters === null ) {
+	if( ! $cache->get($key) ) {
 		global $db;
 		$sth = $db->query("SELECT `character`, `realm` FROM `realid_posts` WHERE `deleted` = 0 AND $region_sql GROUP BY `character`, `realm` HAVING COUNT(*) > 1");
-		$repeat_posters = $sth->rowCount();
+		$cache->add( $key, $sth->rowCount() );
 	}
 
-	return $repeat_posters;
+	return $cache->get($key);
 }
 
 function highest_post_number() {
-	global $region_sql;
+	global $cache, $db, $region_sql;
 
-	static $highest_post_number = null;
+	$key = $cache->key('highestpost');
 
-	if( $highest_post_number === null ) {
-		global $db;
+	if( ! $cache->get($key) ) {
 		$sth = $db->query("SELECT MAX(`id`) `highest` FROM `realid_posts` WHERE $region_sql");
 		$row = $sth->fetch(PDO::FETCH_OBJ);
-		$highest_post_number = $row->highest;
+		$cache->add( $key, $row->highest );
 	}
 
-	return $highest_post_number;
+	return $cache->get($key);
 }
 
 function post_count() {
@@ -89,20 +130,30 @@ function count2sql( $count = 5 ) {
 }
 
 function posters_by_post_count( $count = 5 ) {
-	global $db, $region_sql;
+	global $cache, $db, $region_sql;
 	
+	$key = $cache->key('posters_by_post_count', $count);
 	$count = count2sql($count);
 
-	$sth = $db->query("SELECT `character`, `realm`, COUNT(*) `count` FROM realid_posts WHERE `deleted` = 0 AND $region_sql GROUP BY `character`, `realm` ORDER BY COUNT(*) DESC $count", PDO::FETCH_OBJ);
+	if( ! $cache->get($key) ) {
+		$sth = $db->query("SELECT `character`, `realm`, COUNT(*) `count` FROM realid_posts WHERE `deleted` = 0 AND $region_sql GROUP BY `character`, `realm` ORDER BY COUNT(*) DESC $count", PDO::FETCH_OBJ);
+		$cache->set( $key, $sth->fetchAll() );
+	}
 
-	return $sth->fetchAll();
+	return $cache->get($key);
 }
 
 function all_posters_by_count() {
-	global $db, $region_sql;
+	global $cache, $db, $region_sql;
 
-	$sth = $db->query("SELECT `character`, `realm`, COUNT(*) `count` FROM realid_posts WHERE `deleted` = 0 AND $region_sql GROUP BY `character`, `realm` ORDER BY `character`, `realm`", PDO::FETCH_OBJ);
-	return $sth->fetchAll();
+	$key = $cache->key('postersbycount');
+
+	if( ! $cache->get($key) ) {
+		$sth = $db->query("SELECT `character`, `realm`, COUNT(*) `count` FROM realid_posts WHERE `deleted` = 0 AND $region_sql GROUP BY `character`, `realm` ORDER BY `character`, `realm`", PDO::FETCH_OBJ);
+		$cache->set($key, $sth->fetchAll());
+	}
+
+	return $cache->get($key);
 }
 
 function median_posts() {
@@ -121,13 +172,17 @@ function median_posts() {
 }
 
 function pages_by_count( $count = 5 ) {
-	global $db, $region_sql;
+	global $cache, $db, $region_sql;
 
+	$key = $cache->key('pagesbycount', $count);
 	$count = count2sql($count);
 
-	$sth = $db->query("SELECT page, COUNT(*) `count` FROM realid_posts WHERE `deleted` = 0 AND $region_sql GROUP BY page ORDER BY COUNT(*) $count", PDO::FETCH_OBJ);
+	if( ! $cache->get($key) ) {
+		$sth = $db->query("SELECT `page`, COUNT(*) `count` FROM realid_posts WHERE `deleted` = 0 AND $region_sql GROUP BY page ORDER BY COUNT(*) $count", PDO::FETCH_OBJ);
+		$cache->set($key, $sth->fetchAll());
+	}
 
-	return $sth->fetchAll();
+	return $cache->get($key);
 }
 
 function mean_posts_over_time( $sample_every = 10 ) {
@@ -223,41 +278,41 @@ function new_posts_vs_new_characters( $sample_every = 10 ) {
 	return array($np, $nc);
 }
 
-function rescan_progress() {
-	global $db, $region_sql;
-
-	$sth = $db->query("SELECT COUNT(*) `count` FROM `realid_posts` WHERE rescanned = 0 AND $region_sql GROUP BY page", PDO::FETCH_OBJ);
-	$count = $sth->rowCount();
-
-	return $count;
-}
-
 function best_represented_guilds_by_posts( $count = 5 ) {
-	global $db, $region_sql;
+	global $cache, $db, $region_sql;
 
+	$key = $cache->key('guildbyposts', $count);
 	$count = count2sql($count);
 
-	$sth = $db->query("
-		SELECT `guild`, `realm`, COUNT(*) `count`, COUNT(DISTINCT `character`) `character_count`
-		FROM `realid_posts` `t1`
-		WHERE `guild` != '' AND `realm` != '' AND $region_sql
-		GROUP BY `guild`, `realm`, `region`
-		ORDER BY COUNT(*) DESC, COUNT(DISTINCT `character`) DESC $count
-	", PDO::FETCH_OBJ);
-	return $sth->fetchAll();
+	if( ! $cache->get($key) ) {
+		$sth = $db->query("
+			SELECT `guild`, `realm`, COUNT(*) `count`, COUNT(DISTINCT `character`) `character_count`
+			FROM `realid_posts` `t1`
+			WHERE `guild` != '' AND `realm` != '' AND $region_sql
+			GROUP BY `guild`, `realm`, `region`
+			ORDER BY COUNT(*) DESC, COUNT(DISTINCT `character`) DESC $count
+		", PDO::FETCH_OBJ);
+		$cache->add($key, $sth->fetchAll());
+	}
+
+	return $cache->get($key);
 }
 
 function best_represented_guilds_by_characters( $count = 5 ) {
-	global $db, $region_sql;
+	global $cache, $db, $region_sql;
 
+	$key = $cache->key('guildbychars', $count);
 	$count = count2sql($count);
 
-	$sth = $db->query("
-		SELECT `guild`, `realm`, COUNT(*) `count`, COUNT(DISTINCT `character`) `character_count`
-		FROM `realid_posts` `t1`
-		WHERE `guild` != '' AND `realm` != '' AND $region_sql
-		GROUP BY `guild`, `realm`, `region`
-		ORDER BY COUNT(DISTINCT `character`) DESC, COUNT(*) DESC $count
-	", PDO::FETCH_OBJ);
-	return $sth->fetchAll();
+	if( ! $cache->get($key) ) {
+		$sth = $db->query("
+			SELECT `guild`, `realm`, COUNT(*) `count`, COUNT(DISTINCT `character`) `character_count`
+			FROM `realid_posts` `t1`
+			WHERE `guild` != '' AND `realm` != '' AND $region_sql
+			GROUP BY `guild`, `realm`, `region`
+			ORDER BY COUNT(DISTINCT `character`) DESC, COUNT(*) DESC $count
+		", PDO::FETCH_OBJ);
+		$cache->add($key, $sth->fetchAll());
+	}
+	return $cache->get($key);
 }

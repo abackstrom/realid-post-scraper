@@ -38,3 +38,5 @@ $db->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION );
 global $mc;
 $mc = new Memcache;
 $mc->addServer('localhost', 11211);
+
+$cache = new cache;
