@@ -56,9 +56,9 @@ function scrape_page( $page_no ) {
 
 	$sth = $db->prepare("
 		INSERT INTO `realid_posts`
-			(`id`, `page`, `character`, `realm`, `scanned`, `rescanned`, `region`, `level`, `post_date_gmt`) VALUES
-			(:post_id, :page_no, :character, :realm, NOW(), NOW(), :region, :level, :post_date)
-		ON DUPLICATE KEY UPDATE `page` = :page_no, `character` = :character, `realm` = :realm, `deleted` = 0, `rescanned` = NOW(), `level` = :level, `post_date_gmt` = :post_date
+			(`id`, `page`, `character`, `realm`, `scanned`, `rescanned`, `region`, `level`, `post_date_gmt`, `guild`) VALUES
+			(:post_id, :page_no, :character, :realm, NOW(), NOW(), :region, :level, :post_date, :guild)
+		ON DUPLICATE KEY UPDATE `page` = :page_no, `character` = :character, `realm` = :realm, `deleted` = 0, `rescanned` = NOW(), `level` = :level, `post_date_gmt` = :post_date, guild = :guild
 	");
 
 	$expected_post_no = ($page_no - 1) * 20;
@@ -74,18 +74,25 @@ function scrape_page( $page_no ) {
 			continue;
 		}
 
+		$guild = '';
 		$guild_url = pq($post)->find('.icon-guild a')->attr('href');
 		$realm = pq($post)->find('.icon-realm b')->text();
 		$post_id = (int)pq($post)->find('#postid11 b, #postid21 b')->text();
 		$level = (int)pq($post)->find('.iconPosition')->text();
 		$post_date = pq($post)->find('#postid11 small, #postid21 small')->text();
 
+		if( $guild_url ) {
+			$guild_url = parse_url($guild_url);
+			parse_str($guild_url['query'], $qs);
+			$guild = $qs['n'];
+		}
+
 		$post_date = strtotime($post_date);
 		$post_date = date('Y-m-d H:i:s', $post_date);
 
 		$found_posts[] = $post_id;
 
-		$args = compact('character', 'post_id', 'realm', 'page_no', 'region', 'level', 'post_date');
+		$args = compact('character', 'post_id', 'realm', 'page_no', 'region', 'level', 'post_date', 'guild');
 
 		printf('<li>#%d &mdash; %s of %s (', $post_id, $character, $realm);
 
