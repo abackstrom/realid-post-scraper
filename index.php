@@ -76,13 +76,7 @@ var npnc = [<?php echo json_encode($np); ?>, <?php echo json_encode($nc); ?>];
 
 <h2>Source Code</h2>
 
-<ul>
-	<li><a href="index.php?src">index.php</a> &mdash; this page</li>
-	<li><a href="report-userposts.php?src">report-userposts.php</a> &mdash; characters and their post count</li>
-	<li><a href="init.php?src">init.php</a> &mdash; initialization script</li>
-	<li><a href="functions.php?src">functions.php</a> &mdash; database queries and stats functions</li>
-	<li><a href="realid.php?src">realid.php</a> &mdash; the thread scraper</li>
-</ul>
+<p>Now on github: <a href="http://github.com/abackstrom/realid-post-scraper">http://github.com/abackstrom/realid-post-scraper</a></p>
 
 <h2>Feedback</h2>
 
