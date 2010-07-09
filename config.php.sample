@@ -1,0 +1,7 @@
+<?php
+
+define('DB_DSN', 'some database dsn');
+define('DB_USERNAME', 'some database username');
+define('DB_PASSWORD', 'some database username');
+
+define('SCRAPER_BOSS', 'ip running the scraper (browser-based refresh)');
