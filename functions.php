@@ -76,9 +76,7 @@ function repeat_posts_per_user() {
 	return post_count() / repeat_posters();
 }
 
-function posters_by_post_count( $count = 5 ) {
-	global $db, $region_sql;
-	
+function count2sql( $count = 5 ) {
 	$count = (int)$count;
 
 	if( $count ) {
@@ -86,6 +84,14 @@ function posters_by_post_count( $count = 5 ) {
 	} else {
 		$count = '';
 	}
+
+	return $count;
+}
+
+function posters_by_post_count( $count = 5 ) {
+	global $db, $region_sql;
+	
+	$count = count2sql($count);
 
 	$sth = $db->query("SELECT `character`, `realm`, COUNT(*) `count` FROM realid_posts WHERE `deleted` = 0 AND $region_sql GROUP BY `character`, `realm` ORDER BY COUNT(*) DESC $count", PDO::FETCH_OBJ);
 
@@ -117,13 +123,7 @@ function median_posts() {
 function pages_by_count( $count = 5 ) {
 	global $db, $region_sql;
 
-	$count = (int)$count;
-
-	if( $count ) {
-		$count = "LIMIT $count";
-	} else {
-		$count = '';
-	}
+	$count = count2sql($count);
 
 	$sth = $db->query("SELECT page, COUNT(*) `count` FROM realid_posts WHERE `deleted` = 0 AND $region_sql GROUP BY page ORDER BY COUNT(*) $count", PDO::FETCH_OBJ);
 
@@ -230,4 +230,34 @@ function rescan_progress() {
 	$count = $sth->rowCount();
 
 	return $count;
+}
+
+function best_represented_guilds_by_posts( $count = 5 ) {
+	global $db, $region_sql;
+
+	$count = count2sql($count);
+
+	$sth = $db->query("
+		SELECT `guild`, `realm`, COUNT(*) `count`, COUNT(DISTINCT `character`) `character_count`
+		FROM `realid_posts` `t1`
+		WHERE `guild` != '' AND `realm` != '' AND $region_sql
+		GROUP BY `guild`, `realm`, `region`
+		ORDER BY COUNT(*) DESC, COUNT(DISTINCT `character`) DESC $count
+	", PDO::FETCH_OBJ);
+	return $sth->fetchAll();
+}
+
+function best_represented_guilds_by_characters( $count = 5 ) {
+	global $db, $region_sql;
+
+	$count = count2sql($count);
+
+	$sth = $db->query("
+		SELECT `guild`, `realm`, COUNT(*) `count`, COUNT(DISTINCT `character`) `character_count`
+		FROM `realid_posts` `t1`
+		WHERE `guild` != '' AND `realm` != '' AND $region_sql
+		GROUP BY `guild`, `realm`, `region`
+		ORDER BY COUNT(DISTINCT `character`) DESC, COUNT(*) DESC $count
+	", PDO::FETCH_OBJ);
+	return $sth->fetchAll();
 }

@@ -57,6 +57,22 @@ var highest_post_number = <?php echo highest_post_number(); ?>;
 		</ol>
 	</li>
 	<li><a href="report-userposts.php?region=<?php echo $region; ?>">All characters, with post count</a></li>
+	<li>Top 5 Guilds by Posts:
+		<?php $guilds = best_represented_guilds_by_posts(5); ?>
+		<ol>
+			<?php foreach($guilds as $guild): ?>
+			<li>&lt;<?php echo $guild->guild; ?>&gt; of <?php echo $guild->realm; ?> (<?php echo $guild->count; ?> posts, <?php echo $guild->character_count; ?> character<?php echo $guild->character_count == 1 ? '' : 's'; ?>)</li>
+			<?php endforeach; ?>
+		</ol>
+	</li>
+	<li>Top 5 Guilds by Characters:
+		<?php $guilds = best_represented_guilds_by_characters(5); ?>
+		<ol>
+			<?php foreach($guilds as $guild): ?>
+			<li>&lt;<?php echo $guild->guild; ?>&gt; of <?php echo $guild->realm; ?> (<?php echo $guild->character_count; ?> character<?php echo $guild->character_count == 1 ? '' : 's'; ?>, <?php echo $guild->count; ?> posts)</li>
+			<?php endforeach; ?>
+		</ol>
+	</li>
 </ul>
 
 <p>The following graphs are generated every five minutes with a datapoint every <?php echo floor(highest_post_number() / 100); ?> posts (highest post / 100).</p>
