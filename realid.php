@@ -21,7 +21,13 @@ $wait_multiplier = $result ? 1 : 10;
 
 function scrape_random_page() {
 	global $db, $region_sql;
-	$sth = $db->query("SELECT `page` FROM realid_posts WHERE $region_sql ORDER BY rescanned ASC, page DESC LIMIT 1", PDO::FETCH_OBJ);
+	$sth = $db->query("SELECT `page` FROM realid_posts WHERE rescanned < NOW() - INTERVAL 3 HOUR AND $region_sql ORDER BY rescanned ASC, page DESC LIMIT 1", PDO::FETCH_OBJ);
+
+	if( $sth->rowCount() == 0 ) {
+		echo "No stale pages.";
+		return false;
+	}
+
 	$row = $sth->fetch();
 	$page = $row->page;
 
@@ -48,8 +54,7 @@ function scrape_page( $page_no ) {
 
 	if( $page_no == $max_page ) {
 		echo "not yet full, will rescan old page.<br>";
-		scrape_random_page();
-		return false;
+		return scrape_random_page();
 	}
 
 	echo '<br>';
