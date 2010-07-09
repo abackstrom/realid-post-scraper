@@ -42,6 +42,11 @@ class cache {
 
 		return "realid:$region:$append";
 	}
+
+	function delete($key) {
+		global $mc;
+		return $mc->delete($key);
+	}
 }
 
 function unique_posters() {
@@ -314,5 +319,52 @@ function best_represented_guilds_by_characters( $count = 5 ) {
 		", PDO::FETCH_OBJ);
 		$cache->add($key, $sth->fetchAll());
 	}
+	return $cache->get($key);
+}
+
+function posts_by_hour() {
+	global $cache, $db, $region_sql;
+
+	$key = $cache->key( 'postsbyhour' );
+	$cache->delete($key);
+
+	if( ! $cache->get($key) ) {
+		$sth = $db->query("
+			SELECT UNIX_TIMESTAMP(CONCAT(DATE(post_date_gmt), ' ', HOUR(post_date_gmt), ':00:00')) `hour`, COUNT(*) `count`
+			FROM `realid_posts`
+			WHERE post_date_gmt IS NOT NULL AND $region_sql
+			GROUP BY DATE(post_date_gmt), HOUR(post_date_gmt)
+		", PDO::FETCH_OBJ);
+
+		$posts = $sth->fetchAll();
+
+		$posts = array_map( function($a) { return array( (int)$a->hour*1000, (int)$a->count ); }, $posts );
+
+		$all_series = array();
+		$current_series = array();
+		$previous_block = null;
+
+		foreach($posts as $block) {
+			$this_block = $block[0];
+
+			if( $previous_block == null || $this_block - $previous_block == 3600*1000 ) {
+				// normal.
+				$current_series[] = $block;
+			} else {
+				$all_series[] = $current_series;
+				$current_series = array();
+			}
+
+			$previous_block = $this_block;
+		}
+
+		// make sure we get any leftovers
+		if( count($current_series) ) {
+			$all_series[] = $current_series;
+		}
+
+		$cache->set( $key, $all_series, 60 );
+	}
+
 	return $cache->get($key);
 }

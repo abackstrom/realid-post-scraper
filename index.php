@@ -15,7 +15,7 @@
 <p>Data relating to <a href="<?php echo htmlentities(sprintf($base, 1)); ?>">the Real ID thread</a> on the World
 of Warcraft community forums. (See also: <?php echo implode(", ", $the_regions); ?>)
 
-<p><strong style="color:red">UPDATE:</strong> The original post on the North American forums is now locked, as Blizzard <a href="http://forums.worldofwarcraft.com/thread.html?topicId=25968987278&sid=1">will no longer require</a> posting under your real name..</p>
+<p><strong style="color:red">UPDATE:</strong> The original post on the North American forums is now locked, as Blizzard <a href="http://forums.worldofwarcraft.com/thread.html?topicId=25968987278&sid=1">will no longer require</a> posting under your real name.</p>
 
 <h2>Pages in Thread</h2>
 <ul>
@@ -92,6 +92,12 @@ var mpot = [<?php echo json_encode($mpot); ?>];
 <?php list($np, $nc) = new_posts_vs_new_characters( highest_post_number() / 100 ); ?>
 <script type="text/javascript">
 var npnc = [<?php echo json_encode($np); ?>, <?php echo json_encode($nc); ?>];
+</script>
+
+<h3>New Posts by Hour</h3>
+<div id="pbh-posts" class="graph"></div>
+<script type="text/javascript">
+var pbh = <?php echo json_encode(posts_by_hour()); ?>;
 </script>
 
 <h2>Source Code</h2>

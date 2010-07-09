@@ -20,4 +20,8 @@ $(function(){
 			}
 		);
 	}
+
+	$.plot( $('#pbh-posts'), pbh, {
+		xaxis: { mode: 'time' }
+	});
 });
