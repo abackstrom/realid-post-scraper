@@ -6,8 +6,26 @@ require_once 'phpQuery.php';
 require_once 'functions.php';
 require_once 'config.php';
 
-$base = "http://forums.worldofwarcraft.com/thread.html?topicId=25712374700&sid=1&pageNo=%d";
-$page_no = 1831;
+$valid_regions = array('us', 'de', 'uk', 'ru');
+
+global $region, $region_sql;
+if( isset($_GET['region']) && in_array($_GET['region'], $valid_regions) ) {
+	$region = $_GET['region'];
+} else {
+	$region = 'us';
+}
+$region_sql = "`region` = '$region'";
+
+global $base;
+
+$base_urls = array(
+	'us' => "http://forums.worldofwarcraft.com/thread.html?topicId=25712374700&sid=1&pageNo=%d",
+	'de' => "http://forums.wow-europe.com/thread.html?topicId=13816898570&sid=3&pageNo=%d",
+	'uk' => "http://forums.wow-europe.com/thread.html?topicId=13816838128&sid=1&pageNo=%d",
+	'ru' => "http://forums.wow-europe.com/thread.html?topicId=13816838131&sid=5&pageNo=%d"
+);
+
+$base = $base_urls[$region];
 
 define('BETWEEN_PAGE_TIMEOUT', 7); // in seconds
 

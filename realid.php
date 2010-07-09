@@ -6,8 +6,11 @@ if( $_SERVER['REMOTE_ADDR'] != SCRAPER_BOSS ) {
 	die('Sorry, you are not allowed to start the scraper.');
 }
 
-$sth = $db->query( "SELECT MAX(`page`)+1 `max_page` FROM `realid_posts`" );
+$sth = $db->query( "SELECT MAX(`page`)+1 `max_page` FROM `realid_posts` WHERE $region_sql" );
 $page_no = array_pop($sth->fetch());
+if( $page_no == 0 ) {
+	$page_no = 1;
+}
 
 global $max_page;
 
@@ -15,8 +18,8 @@ $result = scrape_page( $page_no );
 $wait_multiplier = $result ? 1 : 10;
 
 function scrape_random_page() {
-	global $db;
-	$sth = $db->query("SELECT `page` FROM realid_posts ORDER BY rescanned ASC, page DESC LIMIT 1", PDO::FETCH_OBJ);
+	global $db, $region_sql;
+	$sth = $db->query("SELECT `page` FROM realid_posts WHERE $region_sql ORDER BY rescanned ASC, page DESC LIMIT 1", PDO::FETCH_OBJ);
 	$row = $sth->fetch();
 	$page = $row->page;
 
@@ -24,7 +27,7 @@ function scrape_random_page() {
 }
 
 function scrape_page( $page_no ) {
-	global $base, $db, $sth, $max_page;
+	global $base, $db, $sth, $max_page, $region;
 
 	$url = sprintf($base, $page_no);
 
@@ -43,13 +46,14 @@ function scrape_page( $page_no ) {
 
 	if( $page_no == $max_page ) {
 		echo "not yet full, will rescan old page.<br>";
-		return scrape_random_page();
+		scrape_random_page();
+		return false;
 	}
 
 	echo '<br>';
 
 	$sth = $db->prepare("
-		INSERT INTO `realid_posts` (`id`, `page`, `character`, `realm`, `scanned`, `rescanned`) VALUES (:post_id, :page_no, :character, :realm, NOW(), NOW())
+		INSERT INTO `realid_posts` (`id`, `page`, `character`, `realm`, `scanned`, `rescanned`, `region`) VALUES (:post_id, :page_no, :character, :realm, NOW(), NOW(), :region)
 		ON DUPLICATE KEY UPDATE `page` = :page_no, `character` = :character, `realm` = :realm, `deleted` = 0, `rescanned` = NOW()
 	");
 
@@ -72,7 +76,7 @@ function scrape_page( $page_no ) {
 
 		$found_posts[] = $post_id;
 
-		$args = compact('character', 'post_id', 'realm', 'page_no');
+		$args = compact('character', 'post_id', 'realm', 'page_no', 'region');
 
 		printf('<li>#%d &mdash; %s of %s (', $post_id, $character, $realm);
 
@@ -89,10 +93,10 @@ function scrape_page( $page_no ) {
 }
 
 function backfill_deleted_posts( $page, $missing ) {
-	global $db;
+	global $db, $region;
 
 	$sth = $db->prepare("
-		INSERT INTO realid_posts (id, deleted, page, scanned, rescanned) VALUES (:post_id, 1, :page, NOW(), NOW())
+		INSERT INTO realid_posts (id, deleted, page, scanned, rescanned, region) VALUES (:post_id, 1, :page, NOW(), NOW(), :region)
 		ON DUPLICATE KEY UPDATE deleted = 1, rescanned = NOW()
 	");
 
@@ -101,14 +105,13 @@ function backfill_deleted_posts( $page, $missing ) {
 			continue;
 		}
 
-		$args = compact('post_id', 'page');
+		$args = compact('post_id', 'page', 'region');
 		$sth->execute($args);
 	}
 }
 
 function get_max_page() {
 	global $max_page;
-
 	$max_page = pq('.rpage-thread table td:eq(1) a:last')->text();
 }
 

@@ -3,11 +3,13 @@
 require_once 'init.php';
 
 function unique_posters() {
+	global $region_sql;
+
 	static $unique_posters = null;
 
 	if( $unique_posters === null ) {
 		global $db;
-		$sth = $db->query("SELECT `character`, `realm` FROM `realid_posts` WHERE `deleted` = 0 GROUP BY `character`, `realm`");
+		$sth = $db->query("SELECT `character`, `realm` FROM `realid_posts` WHERE `deleted` = 0 AND $region_sql GROUP BY `character`, `realm`");
 		$unique_posters = $sth->rowCount();
 	}
 
@@ -15,11 +17,13 @@ function unique_posters() {
 }
 
 function repeat_posters() {
+	global $region_sql;
+
 	static $repeat_posters = null;
 
 	if( $repeat_posters === null ) {
 		global $db;
-		$sth = $db->query("SELECT `character`, `realm` FROM `realid_posts` WHERE `deleted` = 0 GROUP BY `character`, `realm` HAVING COUNT(*) > 1");
+		$sth = $db->query("SELECT `character`, `realm` FROM `realid_posts` WHERE `deleted` = 0 AND $region_sql GROUP BY `character`, `realm` HAVING COUNT(*) > 1");
 		$repeat_posters = $sth->rowCount();
 	}
 
@@ -27,11 +31,13 @@ function repeat_posters() {
 }
 
 function highest_post_number() {
+	global $region_sql;
+
 	static $highest_post_number = null;
 
 	if( $highest_post_number === null ) {
 		global $db;
-		$sth = $db->query("SELECT MAX(`id`) `highest` FROM `realid_posts`");
+		$sth = $db->query("SELECT MAX(`id`) `highest` FROM `realid_posts` WHERE $region_sql");
 		$row = $sth->fetch(PDO::FETCH_OBJ);
 		$highest_post_number = $row->highest;
 	}
@@ -40,11 +46,13 @@ function highest_post_number() {
 }
 
 function post_count() {
+	global $region_sql;
+
 	static $post_count = null;
 
 	if( $post_count === null ) {
 		global $db;
-		$sth = $db->query("SELECT COUNT(*) `count` FROM `realid_posts` WHERE `deleted` = 0");
+		$sth = $db->query("SELECT COUNT(*) `count` FROM `realid_posts` WHERE `deleted` = 0 AND $region_sql");
 		$row = $sth->fetch(PDO::FETCH_OBJ);
 		$post_count = $row->count;
 	}
@@ -69,7 +77,7 @@ function repeat_posts_per_user() {
 }
 
 function posters_by_post_count( $count = 5 ) {
-	global $db;
+	global $db, $region_sql;
 	
 	$count = (int)$count;
 
@@ -79,15 +87,15 @@ function posters_by_post_count( $count = 5 ) {
 		$count = '';
 	}
 
-	$sth = $db->query("SELECT `character`, `realm`, COUNT(*) `count` FROM realid_posts WHERE `deleted` = 0 GROUP BY `character`, `realm` ORDER BY COUNT(*) DESC $count", PDO::FETCH_OBJ);
+	$sth = $db->query("SELECT `character`, `realm`, COUNT(*) `count` FROM realid_posts WHERE `deleted` = 0 AND $region_sql GROUP BY `character`, `realm` ORDER BY COUNT(*) DESC $count", PDO::FETCH_OBJ);
 
 	return $sth->fetchAll();
 }
 
 function all_posters_by_count() {
-	global $db;
+	global $db, $region_sql;
 
-	$sth = $db->query("SELECT `character`, `realm`, COUNT(*) `count` FROM realid_posts WHERE `deleted` = 0 GROUP BY `character`, `realm` ORDER BY `character`, `realm`", PDO::FETCH_OBJ);
+	$sth = $db->query("SELECT `character`, `realm`, COUNT(*) `count` FROM realid_posts WHERE `deleted` = 0 AND $region_sql GROUP BY `character`, `realm` ORDER BY `character`, `realm`", PDO::FETCH_OBJ);
 	return $sth->fetchAll();
 }
 
@@ -107,7 +115,7 @@ function median_posts() {
 }
 
 function pages_by_count( $count = 5 ) {
-	global $db;
+	global $db, $region_sql;
 
 	$count = (int)$count;
 
@@ -117,28 +125,30 @@ function pages_by_count( $count = 5 ) {
 		$count = '';
 	}
 
-	$sth = $db->query("SELECT page, COUNT(*) `count` FROM realid_posts WHERE `deleted` = 0 GROUP BY page ORDER BY COUNT(*) $count", PDO::FETCH_OBJ);
+	$sth = $db->query("SELECT page, COUNT(*) `count` FROM realid_posts WHERE `deleted` = 0 AND $region_sql GROUP BY page ORDER BY COUNT(*) $count", PDO::FETCH_OBJ);
 
 	return $sth->fetchAll();
 }
 
 function mean_posts_over_time( $sample_every = 10 ) {
-	global $db, $mc;
+	global $db, $mc, $region, $region_sql;
 
-	$walking_mean = $mc->get( 'realid:mpot' );
+	$sample_every = floor($sample_every);
+
+	$walking_mean = $mc->get( "realid:$region:mpot:$sample_every" );
 
 	if( $walking_mean ) {
 		return $walking_mean;
 	}
 
 	// try to reserve the spot in memcached for maximum 30 seconds
-	if( ! $mc->add( 'realid:mpot', 'generating', 30 ) ) {
-		return $mc->get( 'realid:mpot' );
+	if( ! $mc->add( "realid:$region:mpot:$sample_every", 'generating', 30 ) ) {
+		return $mc->get( "realid:$region:mpot:$sample_every" );
 	}
 
 	ignore_user_abort( true );
 
-	$sth = $db->query("SELECT * FROM realid_posts WHERE `deleted` = 0 ORDER BY id", PDO::FETCH_OBJ);
+	$sth = $db->query("SELECT * FROM realid_posts WHERE `deleted` = 0 AND $region_sql ORDER BY id", PDO::FETCH_OBJ);
 
 	$posts = array();
 	$walking_mean = array();
@@ -162,28 +172,30 @@ function mean_posts_over_time( $sample_every = 10 ) {
 		$i++;
 	}
 
-	$mc->set( 'realid:mpot', $walking_mean, false, 300 );
+	$mc->set( "realid:$region:mpot:$sample_every", $walking_mean, false, 300 );
 
 	return $walking_mean;
 }
 
 function new_posts_vs_new_characters( $sample_every = 10 ) {
-	global $db, $mc;
+	global $db, $mc, $region, $region_sql;
 
-	$npnc = $mc->get( 'realid:npnc' );
+	$sample_every = floor($sample_every);
+
+	$npnc = $mc->get( "realid:$region:npnc:$sample_every" );
 
 	if( $npnc ) {
 		return $npnc;
 	}
 
 	// try to reserve the spot in memcached for maximum 30 seconds
-	if( ! $mc->add( 'realid:npnc', array('generating', 'generating'), 30 ) ) {
-		return $mc->get( 'realid:npnc' );
+	if( ! $mc->add( "realid:$region:npnc:$sample_every", array('generating', 'generating'), 30 ) ) {
+		return $mc->get( "realid:$region:npnc:$sample_every" );
 	}
 
 	ignore_user_abort( true );
 
-	$sth = $db->query("SELECT * FROM realid_posts WHERE `deleted` = 0 ORDER BY id", PDO::FETCH_OBJ);
+	$sth = $db->query("SELECT * FROM realid_posts WHERE `deleted` = 0 AND $region_sql ORDER BY id", PDO::FETCH_OBJ);
 
 	$seen_characters = array();
 
@@ -206,15 +218,15 @@ function new_posts_vs_new_characters( $sample_every = 10 ) {
 		$i += 1;
 	}
 
-	$mc->set( 'realid:npnc', array($np, $nc), false, 300 );
+	$mc->set( "realid:$region:npnc:$sample_every", array($np, $nc), false, 300 );
 
 	return array($np, $nc);
 }
 
 function rescan_progress() {
-	global $db;
+	global $db, $region_sql;
 
-	$sth = $db->query("SELECT COUNT(*) `count` FROM `realid_posts` WHERE rescanned = 0 GROUP BY page", PDO::FETCH_OBJ);
+	$sth = $db->query("SELECT COUNT(*) `count` FROM `realid_posts` WHERE rescanned = 0 AND $region_sql GROUP BY page", PDO::FETCH_OBJ);
 	$count = $sth->rowCount();
 
 	return $count;

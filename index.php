@@ -3,14 +3,15 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<title>Real ID Thread Statistics</title>
+	<title>Real ID Thread Statistics (<?php echo $region; ?>)</title>
 	<link rel="stylesheet" type="text/css" href="realid.css">
 </head>
 <body>
 
-<h1>Real ID Thread Statistics</h1>
+<h1>Real ID Thread Statistics (<?php echo $region; ?>)</h1>
 
-<p>Data relating to <a href="http://forums.worldofwarcraft.com/thread.html?topicId=25712374700">the Real ID thread</a> on the World of Warcraft community forums.</p>
+<p>Data relating to <a href="<?php echo htmlentities(sprintf($base, 1)); ?>">the Real ID thread</a> on the World of Warcraft community forums. (See also:
+<a href="?region=us">us</a>, <a href="?region=de">de</a>, <a href="?region=uk">uk</a>, <a href="?region=ru">ru</a>)</p>
 
 <h2>Pages in Thread</h2>
 <ul>
@@ -18,7 +19,7 @@
 		<?php $least = pages_by_count(5); ?>
 		<ol>
 			<?php foreach($least as $page): ?>
-				<li><a href="<?php printf($base, $page->page); ?>"><?php echo $page->page; ?></a> (<?php echo $page->count; ?> posts)</li>
+				<li><a href="<?php echo htmlentities(sprintf($base, $page->page)); ?>"><?php echo $page->page; ?></a> (<?php echo $page->count; ?> posts)</li>
 			<?php endforeach; ?>
 		</ol>
 	</li>
@@ -53,20 +54,22 @@ var highest_post_number = <?php echo highest_post_number(); ?>;
 			<?php endforeach; ?>
 		</ol>
 	</li>
-	<li><a href="report-userposts.php">All characters, with post count</a></li>
+	<li><a href="report-userposts.php?region=<?php echo $region; ?>">All characters, with post count</a></li>
 </ul>
 
+<p>The following graphs are generated every five minutes with a datapoint every <?php echo floor(highest_post_number() / 100); ?> posts (highest post / 100).</p>
+
 <h3>Mean Posts/Character over Time</h3>
-<p>This graph is generated every five minutes with a datapoint every 500 posts.</p>
 <div id="mean-posts" class="graph"></div>
-<?php $mpot = mean_posts_over_time( 500 ); ?>
+<?php $mpot = mean_posts_over_time( highest_post_number() / 100 ); ?>
 <script type="text/javascript">
 var mpot = [<?php echo json_encode($mpot); ?>];
 </script>
 
 <h3>New Posts vs. New Characters</h3>
+<p>Showing post count increase compared to total number of unique characters in the thread.</p>
 <div id="npnc-posts" class="graph"></div>
-<?php list($np, $nc) = new_posts_vs_new_characters( 500 ); ?>
+<?php list($np, $nc) = new_posts_vs_new_characters( highest_post_number() / 100 ); ?>
 <script type="text/javascript">
 var npnc = [<?php echo json_encode($np); ?>, <?php echo json_encode($nc); ?>];
 </script>
