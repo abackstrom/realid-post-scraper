@@ -15,6 +15,8 @@
 <p>Data relating to <a href="<?php echo htmlentities(sprintf($base, 1)); ?>">the Real ID thread</a> on the World
 of Warcraft community forums. (See also: <?php echo implode(", ", $the_regions); ?>)
 
+<p><strong style="color:red">UPDATE:</strong> The original post on the North American forums is now locked, as Blizzard <a href="http://forums.worldofwarcraft.com/thread.html?topicId=25968987278&sid=1">will no longer require</a> posting under your real name..</p>
+
 <h2>Pages in Thread</h2>
 <ul>
 	<li>Pages with the least posts:
