@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS `realid_posts` (
 	`character` varchar(50) NOT NULL,
 	`guild` varchar(50) NOT NULL,
 	`realm` varchar(50) NOT NULL,
-	`region` enum('us','de','uk','ru') NOT NULL default 'us',
+	`region` enum('us','de','uk','ru','es','fr') NOT NULL default 'us',
 	`scanned` datetime NOT NULL,
 	`rescanned` datetime NOT NULL,
 	UNIQUE KEY `id` (`id`,`region`),

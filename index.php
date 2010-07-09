@@ -10,8 +10,10 @@
 
 <h1>Real ID Thread Statistics (<?php echo $region; ?>)</h1>
 
-<p>Data relating to <a href="<?php echo htmlentities(sprintf($base, 1)); ?>">the Real ID thread</a> on the World of Warcraft community forums. (See also:
-<a href="?region=us">us</a>, <a href="?region=de">de</a>, <a href="?region=uk">uk</a>, <a href="?region=ru">ru</a>)</p>
+<?php $the_regions = array_map( function($s) { return sprintf('<a href="?region=%s">%s</a>', $s, $s); }, $valid_regions ); ?>
+
+<p>Data relating to <a href="<?php echo htmlentities(sprintf($base, 1)); ?>">the Real ID thread</a> on the World
+of Warcraft community forums. (See also: <?php echo implode(", ", $the_regions); ?>)
 
 <h2>Pages in Thread</h2>
 <ul>
